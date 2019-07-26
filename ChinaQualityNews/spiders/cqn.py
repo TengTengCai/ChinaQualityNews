@@ -3,6 +3,8 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
 
+from ChinaQualityNews.items import ChinaqualitynewsItem
+
 
 class CqnSpider(CrawlSpider):
     name = 'cqn'
@@ -59,11 +61,11 @@ class CqnSpider(CrawlSpider):
                     trs.pop(0)
 
                 for tr in trs:
-                    item = {'title': title,
-                            'info_sources': info_sources,
-                            'publish_time': publish_time,
-                            'source_url': response.url,
-                            }
+                    item = ChinaqualitynewsItem()
+                    item['title'] = title
+                    item['info_sources'] = info_sources
+                    item['publish_time'] = publish_time
+                    item['source_url'] = response.url
                     tds = tr.xpath('.//td')
                     index = 0
                     if len(tds) < col_num:
@@ -102,9 +104,9 @@ class CqnSpider(CrawlSpider):
         elif index == 4:
             item['specification_type'] = value
         elif index == 5:
-            item['production_date'] = value
+            item['factory_num'] = value
         elif index == 6:
-            item['sampling_name'] = value
+            item['sample_name'] = value
         elif index == 7:
             item['inspection_institution'] = value
         elif index == 8:

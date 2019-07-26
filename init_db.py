@@ -9,16 +9,19 @@ create table  unqualified_sampling
 	info_sources varchar(32) null,
 	company_name varchar(64) null,
 	company_address varchar(128) null,
+
 	sampled_unit varchar(64) null,
 	sampled_address varchar(128) null,
 	sample_name varchar(128) null,
 	specification_type varchar(64) null,
 	trademark varchar(64) null,
+
 	production_date varchar(32) null,
 	factory_num varchar(32) null,
 	approval_num varchar(32) null,
 	unqualified varchar(128) null,
 	test_value varchar(128) null,
+
 	standard varchar(128) null,
 	sampling_unit varchar(128) null,
 	inspection_institution varchar(128) null,
