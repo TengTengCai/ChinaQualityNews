@@ -10,19 +10,26 @@ class CqnSpider(CrawlSpider):
     start_urls = ['http://www.cqn.com.cn/ms/node_20334.htm']
 
     rules = (
-        Rule(LinkExtractor(allow=r'http://www.cqn.com.cn/ms/content/\d+-\d+/\d+/content_\d+.htm'), callback='parse_item', follow=True),
+        Rule(LinkExtractor(allow=r'http://www.cqn.com.cn/ms/content/2019-\d+/\d+/content_\d+.htm'),
+             callback='parse_item', follow=True),
     )
 
     def parse_item(self, response):
-        item = {}
-        #item['domain_id'] = response.xpath('//input[@id="sid"]/@value').get()
-        #item['name'] = response.xpath('//div[@id="name"]').get()
-        #item['description'] = response.xpath('//div[@id="description"]').get()
-        news_type = response.xpath('./body//div[@class="box"][1]//a[4]/text()').extract_first().strip()
-        if news_type == '国家抽查':
+        # item['domain_id'] = response.xpath('//input[@id="sid"]/@value').get()
+        # item['name'] = response.xpath('//div[@id="name"]').get()
+        # item['description'] = response.xpath('//div[@id="description"]').get()
+        news_type = response.xpath('./body//div[@class="box"][1]//a[4]/text()').extract_first()
+        if news_type is None:
+            return
+        news_type = news_type.strip()
+        year = response.xpath('./body//div[@class="box"][1]//a[5]/text()').extract_first()
+        if year is None:
+            return
+        year = year.strip()
+        if news_type == '国家抽查' and year == '2019':
             big_title = response.xpath('.//div[@class="Detail_Title"]/h1/text()').extract_first().strip().split('：')
             if len(big_title) >= 2:
-                title = ''.join(big_title[:1])
+                title = ''.join(big_title[1:])
                 info_sources = big_title[0]
             else:
                 title = ''.join(big_title)
@@ -30,30 +37,207 @@ class CqnSpider(CrawlSpider):
             publish_time = response.xpath('.//div[@class="publish"][1]/text()').extract_first().strip()
 
             tables = response.xpath('.//table[@class="MsoNormalTable"]')
+            if len(tables) == 0:
+                tables = response.xpath('.//table[@style]')
+                if len(tables) == 0:
+                    tables = response.xpath('.//table')
             for table in tables:
                 trs = table.xpath('.//tr')
-                for tr in trs:
-                    tds = tr.xpath('.//td')
-                    temp = {}
-                    index = 0
+                temp = []
+                tr = trs[0]
+                tds = tr.xpath('.//td')
+                if len(tds) == 1:
+                    col_num = tds[0].xpath('.//@colspan').extract_first()
+                    col_num = 1 if col_num is None else int(col_num)
+                    trs.pop(0)
+                    trs.pop(0)
+                else:
+                    col_num = len(tds)
                     for td in tds:
+                        if '备注' == td.xpath('.//span//text()').extract_first():
+                            col_num -= 1
+                    trs.pop(0)
 
-                        row = td.xpath('./@rowspan').extract_first()
-                        if
-                        item['title'] = title
-                        item['info_sources'] = info_sources
-                        item['publish_time'] = publish_time
-
-                        item['company_name'] = response.xpath()
-                        item['company_address'] = response.xpath()
-                        item['sampling_unit'] = response.xpath()
-                        item['sampling_address'] = response.xpath()
-                        item['sample_name'] = response.xpath()
-                        item['specification_type'] = response.xpath()
-                        item['trademark'] = response.xpath()
-                        item['unqualified'] = response.xpath()
-                        item['test_value'] = response.xpath()
-                        item['standard'] = response.xpath()
-                        item['inspection_institution'] = response.xpath()
-                        index += 1
+                for tr in trs:
+                    item = {'title': title,
+                            'info_sources': info_sources,
+                            'publish_time': publish_time,
+                            }
+                    tds = tr.xpath('.//td')
+                    index = 0
+                    if len(tds) < col_num:
+                        for i in temp:
+                            if i is None:
+                                td = tds.pop(0)
+                                value = ''.join(td.xpath('.//span//text()').extract())
+                            else:
+                                value = i
+                            item = self.table_col_adapter(col_num, item, index, value)
+                            index += 1
                         yield item
+                    else:
+                        temp = []
+                        for td in tds:
+                            value = ''.join(td.xpath('.//span//text()').extract())
+                            item = self.table_col_adapter(col_num, item, index, value)
+                            row = td.xpath('./@rowspan').extract_first()
+                            if row is not None:
+                                temp.append(value)
+                            else:
+                                temp.append(None)
+                            index += 1
+                        yield item
+
+    @staticmethod
+    def create_item_to_9(item, index, value):
+        if index == 0:
+            return item
+        elif index == 1:
+            item['sample_name'] = value
+        elif index == 2:
+            item['sampled_unit'] = value
+        elif index == 3:
+            item['company_name'] = value
+        elif index == 4:
+            item['specification_type'] = value
+        elif index == 5:
+            item['production_date'] = value
+        elif index == 6:
+            item['sampling_name'] = value
+        elif index == 7:
+            item['inspection_institution'] = value
+        elif index == 8:
+            item['unqualified'] = value
+        return item
+
+
+    @staticmethod
+    def create_item_to_11(item, index, value):
+        if index == 0:
+            return item
+        elif index == 1:
+            item['company_name'] = value
+        elif index == 2:
+            item['company_address'] = value
+        elif index == 3:
+            item['sampled_unit'] = value
+        elif index == 4:
+            item['sampled_address'] = value
+        elif index == 5:
+            item['sample_name'] = value
+        elif index == 6:
+            item['specification_type'] = value
+        elif index == 7:
+            item['trademark'] = value
+        elif index == 8:
+            item['production_date'] = value
+        elif index == 9:
+            item['unqualified'] = value
+        elif index == 10:
+            item['test_value'] = value
+        return item
+
+    @staticmethod
+    def create_item_to_12(item, index, value):
+        if index == 0:
+            return item
+        elif index == 1:
+            item['company_name'] = value
+        elif index == 2:
+            item['company_address'] = value
+        elif index == 3:
+            item['sampled_unit'] = value
+        elif index == 4:
+            item['sampled_address'] = value
+        elif index == 5:
+            item['sample_name'] = value
+        elif index == 6:
+            item['specification_type'] = value
+        elif index == 7:
+            item['trademark'] = value
+        elif index == 8:
+            item['unqualified'] = value
+        elif index == 9:
+            item['test_value'] = value
+        elif index == 10:
+            item['standard'] = value
+        elif index == 11:
+            item['inspection_institution'] = value
+        return item
+
+    @staticmethod
+    def create_item_to_13(item, index, value):
+        if index == 0:
+            return item
+        elif index == 1:
+            item['company_name'] = value
+        elif index == 2:
+            item['company_address'] = value
+        elif index == 3:
+            item['sampled_unit'] = value
+        elif index == 4:
+            item['sampled_address'] = value
+        elif index == 5:
+            item['sample_name'] = value
+        elif index == 6:
+            item['specification_type'] = value
+        elif index == 7:
+            item['trademark'] = value
+        elif index == 8:
+            item['production_date'] = value
+        elif index == 9:
+            item['unqualified'] = value
+        elif index == 10:
+            item['test_value'] = value
+        elif index == 11:
+            item['standard'] = value
+        elif index == 12:
+            item['inspection_institution'] = value
+        return item
+
+    @staticmethod
+    def create_item_to_14(item, index, value):
+        if index == 0:
+            return item
+        elif index == 1:
+            item['company_name'] = value
+        elif index == 2:
+            item['company_address'] = value
+        elif index == 3:
+            item['sampled_unit'] = value
+        elif index == 4:
+            item['sampled_address'] = value
+        elif index == 5:
+            item['sample_name'] = value
+        elif index == 6:
+            item['approval_num'] = value
+        elif index == 7:
+            item['trademark'] = value
+        elif index == 8:
+            item['factory_num'] = value
+        elif index == 9:
+            item['production_date'] = value
+        elif index == 10:
+            item['specification_type'] = value
+        elif index == 11:
+            item['unqualified'] = value
+        elif index == 12:
+            item['test_value'] = value
+        elif index == 13:
+            item['standard'] = value
+        elif index == 14:
+            item['inspection_institution'] = value
+        return item
+
+    def table_col_adapter(self, items_len, item, index, value):
+        if items_len == 9:
+            item = self.create_item_to_9(item, index, value)
+        elif items_len == 11:
+            item = self.create_item_to_11(item, index, value)
+        elif items_len == 12:
+            item = self.create_item_to_12(item, index, value)
+        elif items_len == 13:
+            item = self.create_item_to_13(item, index, value)
+        elif items_len == 14:
+            item = self.create_item_to_14(item, index, value)
+        return item
