@@ -30,4 +30,6 @@ class ChinaqualitynewsItem(scrapy.Item):
     sampling_unit = scrapy.Field()  # 抽样单位名称
     inspection_institution = scrapy.Field()  # 检验机构
 
+    source_url = scrapy.Field()
+
     pass

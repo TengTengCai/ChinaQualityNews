@@ -62,6 +62,7 @@ class CqnSpider(CrawlSpider):
                     item = {'title': title,
                             'info_sources': info_sources,
                             'publish_time': publish_time,
+                            'source_url': response.url,
                             }
                     tds = tr.xpath('.//td')
                     index = 0

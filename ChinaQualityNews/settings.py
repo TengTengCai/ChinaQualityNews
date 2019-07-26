@@ -91,3 +91,11 @@ HTTPCACHE_IGNORE_HTTP_CODES = []
 HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 DEPTH_LIMIT = 100
+
+DB_SETTINGS = {
+    'host': '127.0.0.1',
+    'port': 3306,
+    'user': 'root',
+    'password': '123456',
+    'db': 'cqn'
+}
